@@ -3,74 +3,93 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(SessionController.self) private var session
-    @AppStorage(Prefs.skin) private var skinRaw = OysterSkin.classic.rawValue
     @AppStorage(Prefs.lastDuration) private var duration = 25 * 60
     @Query(sort: \Catch.endDate, order: .reverse) private var catches: [Catch]
     @State private var task = ""
     @FocusState private var taskFocused: Bool
 
-    private var skin: OysterSkin { OysterSkin(rawValue: skinRaw) ?? .classic }
     private var streak: Int { Streak.current(completions: catches.completions) }
 
     var body: some View {
-        GeometryReader { geo in
-            // The Duo's inner display is nearly square. Use two columns when there's room.
-            let wide = geo.size.width > 600 && geo.size.width > geo.size.height * 0.85
-            ZStack {
-                OceanBackground()
-                if wide {
-                    HStack(spacing: 40) {
-                        VStack(spacing: 24) {
-                            header
-                            oyster
-                        }
-                        .frame(maxWidth: .infinity)
-                        controls
-                            .frame(maxWidth: 420)
-                    }
-                    .padding(.horizontal, 40)
-                    .padding(.vertical, 24)
-                } else {
-                    ScrollView {
-                        VStack(spacing: 22) {
-                            header
-                            oyster
-                                .frame(maxWidth: 320)
-                            controls
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-                        .padding(.bottom, 40)
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                }
-            }
+        ClamInterior(openDegrees: session.openDegrees) {
+            lid
+        } bowl: {
+            bowl
         }
+        .ignoresSafeArea(.keyboard)
         .onTapGesture { taskFocused = false }
     }
 
-    // MARK: Pieces
+    // MARK: Lid
+
+    /// The underside of the lid: the oyster talks from here, and its eyes sit just above the hinge.
+    private var lid: some View {
+        VStack(spacing: 0) {
+            header
+            Spacer(minLength: 8)
+            Text(bubbleLine)
+                .font(Theme.voice(23))
+                .foregroundStyle(Theme.foam)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 480)
+                .id(bubbleLine)
+                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            if session.phase == .idle {
+                taskField
+                    .frame(maxWidth: 440)
+                    .padding(.top, 18)
+            } else if let active = session.active {
+                Text(summary(active))
+                    .font(Theme.ui(14, .medium))
+                    .foregroundStyle(Theme.mist)
+                    .padding(.top, 10)
+            }
+            Spacer(minLength: 8)
+            OysterEyes(mood: session.phase == .idle ? .content : .sleepy, size: 34, lidColor: Color(red: 0.15, green: 0.18, blue: 0.22))
+                .padding(.bottom, 12)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 4)
+        .animation(.easeInOut(duration: 0.3), value: bubbleLine)
+    }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 8) {
             Text("Clam Up")
-                .font(.system(size: 28, weight: .bold, design: .serif))
+                .font(.system(size: 30, weight: .bold, design: .serif))
                 .foregroundStyle(Theme.foam)
-            Spacer()
+                .lineLimit(1)
+                .fixedSize()
+            Spacer(minLength: 12)
             if streak > 0 {
-                Label("\(streak) day\(streak == 1 ? "" : "s")", systemImage: "flame.fill")
-                    .font(Theme.ui(14, .semibold))
+                Label("\(streak)", systemImage: "flame.fill")
                     .foregroundStyle(Theme.sand)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(Theme.card, in: .capsule)
+                    .pill()
+                    .accessibilityLabel("\(streak) day streak")
             }
-            Label("\(catches.filter(\.completed).count)", systemImage: "circle.fill")
-                .font(Theme.ui(14, .semibold))
-                .foregroundStyle(Theme.foam)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(Theme.card, in: .capsule)
-                .accessibilityLabel("\(catches.filter(\.completed).count) pearls")
+            HStack(spacing: 6) {
+                PearlView(spec: PearlSpec(size: 0.5, color: .white, hueJitter: 0, grade: .round), diameter: 14)
+                Text("\(catches.filter(\.completed).count)")
+            }
+            .foregroundStyle(Theme.foam)
+            .pill()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(catches.filter(\.completed).count) pearls")
         }
+    }
+
+    private var taskField: some View {
+        TextField("", text: $task, prompt: Text("What are you working on?").foregroundStyle(Theme.mist.opacity(0.6)))
+            .font(Theme.ui(18))
+            .foregroundStyle(Theme.foam)
+            .multilineTextAlignment(.center)
+            .focused($taskFocused)
+            .submitLabel(.done)
+            .padding(.horizontal, 16).padding(.vertical, 13)
+            .background(Color.black.opacity(0.28), in: .capsule)
+            .overlay(Capsule().strokeBorder(Theme.cardStroke))
+            .accessibilityLabel("What are you working on? Optional. The pearl gets named after it.")
     }
 
     private var bubbleLine: String {
@@ -81,62 +100,56 @@ struct HomeView: View {
         }
     }
 
-    private var oyster: some View {
-        VStack(spacing: 18) {
-            Text(bubbleLine)
-                .font(Theme.voice(20))
-                .foregroundStyle(Theme.foam)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 18).padding(.vertical, 14)
-                .card(radius: 22)
-                .id(bubbleLine)
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            OysterView(openAmount: 0, mood: session.phase == .idle ? .content : .sleepy, skin: skin)
+    // MARK: Bowl
+
+    /// The bowl: where the pearl grows, right below the hinge, and the controls for growing it.
+    private var bowl: some View {
+        VStack(spacing: 14) {
+            pearlSpot
+            Group {
+                switch session.phase {
+                case .armed: armedControls
+                case .growing: growingControls
+                default: idleControls
+                }
+            }
+            .frame(maxWidth: 520)
+            Spacer(minLength: 0)
         }
-        .animation(.easeInOut(duration: 0.3), value: bubbleLine)
+        .padding(.horizontal, 24)
     }
 
     @ViewBuilder
-    private var controls: some View {
+    private var pearlSpot: some View {
         switch session.phase {
-        case .armed: armedControls
-        case .growing: growingControls
-        default: idleControls
+        case .growing:
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let p = session.progress(at: context.date)
+                PearlView(spec: PearlSpec(size: p, color: .white, hueJitter: 0, grade: .round), diameter: 14 + 40 * p)
+                    .frame(height: 58)
+                    .animation(.easeInOut(duration: 1), value: p)
+            }
+        case .armed:
+            SandGrain(size: 14, glow: 1).frame(height: 42)
+        default:
+            SandGrain(size: 12, glow: 0.35).frame(height: 42)
         }
     }
 
     private var idleControls: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("What are you working on?")
-                    .font(Theme.ui(15, .medium))
-                    .foregroundStyle(Theme.mist)
-                TextField("", text: $task, prompt: Text("Optional. The pearl gets named after it.").foregroundStyle(Theme.mist.opacity(0.5)))
-                    .font(Theme.ui(18))
-                    .foregroundStyle(Theme.foam)
-                    .focused($taskFocused)
-                    .submitLabel(.done)
-                    .padding(14)
-                    .card(radius: 14)
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Text("How long?")
-                    .font(Theme.ui(15, .medium))
-                    .foregroundStyle(Theme.mist)
-                DurationPicker(seconds: $duration)
-            }
+        VStack(spacing: 14) {
+            DurationPicker(seconds: $duration)
+                .contentMargins(.horizontal, 24, for: .scrollContent)
+                .padding(.horizontal, -24)
             Button("Get ready") {
                 taskFocused = false
                 session.arm(task: task, seconds: duration)
                 task = ""
             }
             .buttonStyle(PrimaryButtonStyle())
-            .padding(.top, 4)
             Text(rewardHint)
                 .font(Theme.ui(13))
                 .foregroundStyle(Theme.mist.opacity(0.8))
-                .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
         }
     }
@@ -149,23 +162,17 @@ struct HomeView: View {
     }
 
     private var armedControls: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 14) {
             if session.usesHinge {
-                VStack(spacing: 10) {
-                    Image(systemName: "arrow.down.and.line.horizontal.and.arrow.up")
-                        .font(.system(size: 34, weight: .medium))
-                        .foregroundStyle(Theme.sand)
-                        .symbolEffect(.pulse)
-                    Text("Close the phone to start")
+                VStack(spacing: 6) {
+                    Text("Now close the phone")
                         .font(Theme.ui(22, .semibold))
                         .foregroundStyle(Theme.foam)
                     Text("The pearl only grows while the shell is shut.")
                         .font(Theme.ui(15))
                         .foregroundStyle(Theme.mist)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .card()
+                .multilineTextAlignment(.center)
             } else {
                 Button("Clam up") { session.close() }
                     .buttonStyle(PrimaryButtonStyle())
@@ -173,11 +180,6 @@ struct HomeView: View {
                     .font(Theme.ui(14))
                     .foregroundStyle(Theme.mist)
                     .multilineTextAlignment(.center)
-            }
-            if let active = session.active {
-                Text(summary(active))
-                    .font(Theme.ui(14))
-                    .foregroundStyle(Theme.mist)
             }
             Button("Never mind") { session.cancelArm() }
                 .buttonStyle(QuietButtonStyle())
@@ -188,7 +190,7 @@ struct HomeView: View {
     }
 
     private var growingControls: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 14) {
             SessionClock()
             if session.isDone() {
                 Button("Open the shell") { session.open() }
@@ -224,7 +226,8 @@ struct DurationPicker: View {
     }
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], spacing: 8) {
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 8) {
             ForEach(Self.options, id: \.self) { option in
                 let selected = option == seconds
                 Button {
@@ -233,14 +236,17 @@ struct DurationPicker: View {
                     Text(Self.label(option))
                         .font(Theme.ui(16, selected ? .semibold : .regular))
                         .foregroundStyle(selected ? Theme.abyss : Theme.foam)
-                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(selected ? Theme.sand : Theme.card, in: .capsule)
+                        .background(selected ? Theme.sand : Color.black.opacity(0.28), in: .capsule)
                         .overlay(Capsule().strokeBorder(selected ? .clear : Theme.cardStroke))
+                        .animation(.snappy(duration: 0.2), value: selected)
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
+          }
+          .padding(.horizontal, 2)
         }
         .sensoryFeedback(.selection, trigger: seconds)
     }
@@ -261,8 +267,7 @@ struct SessionClock: View {
                     .monospacedDigit()
                     .foregroundStyle(Theme.foam)
                     .contentTransition(.numericText(countsDown: true))
-                ProgressView(value: session.progress(at: context.date))
-                    .tint(Theme.sand)
+                PearlTrack(progress: session.progress(at: context.date))
                     .frame(maxWidth: 260)
                 Text("of \(DurationPicker.label(Int(planned)))")
                     .font(Theme.ui(14))
@@ -275,6 +280,33 @@ struct SessionClock: View {
         let s = Int(seconds.rounded(.up))
         let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%d:%02d", m, sec)
+    }
+}
+
+/// A thin track with a small pearl riding along the front edge.
+struct PearlTrack: View {
+    var progress: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            let p = min(1, max(0, progress))
+            let pearl: CGFloat = 16
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.08))
+                Capsule()
+                    .fill(LinearGradient(colors: [Theme.sand.opacity(0.25), Theme.sand], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: max(pearl / 2, geo.size.width * p))
+                PearlView(spec: PearlSpec(size: 0.5, color: .cream, hueJitter: 0, grade: .round), diameter: pearl)
+                    .offset(x: (geo.size.width - pearl) * p)
+            }
+            .frame(height: 5)
+            .frame(maxHeight: .infinity)
+        }
+        .frame(height: 18)
+        .animation(.linear(duration: 1), value: progress)
+        .accessibilityElement()
+        .accessibilityLabel("Progress")
+        .accessibilityValue("\(Int(progress * 100)) percent")
     }
 }
 

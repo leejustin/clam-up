@@ -112,6 +112,24 @@ final class SessionController {
         return sawHinge
     }
 
+    /// How far open the shell is, in degrees: 0 shut, 180 flat. 180 on phones without a hinge.
+    var openDegrees: Double {
+        #if DEBUG
+        if let angle = Self.debugAngle { return angle }
+        if let debugFold { return debugFold == .closed ? 0 : 180 }
+        #endif
+        return hinge.degrees ?? 180
+    }
+
+    #if DEBUG
+    /// `-hingeAngle 70` pretends the shell is part open, to check the lighting without a hinge.
+    private static let debugAngle: Double? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-hingeAngle"), i + 1 < args.count else { return nil }
+        return Double(args[i + 1])
+    }()
+    #endif
+
     var shellClosed: Bool {
         #if DEBUG
         if let debugFold { return debugFold == .closed }

@@ -12,6 +12,9 @@ struct OysterView: View {
     var pearl: PearlSpec? = nil
     var breathing = true
 
+    /// How far the lid rises at fully open, as a fraction of the oyster's height.
+    static let lift: CGFloat = 0.32
+
     @State private var breathe = false
     @State private var blink = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -28,17 +31,27 @@ struct OysterView: View {
                     .blur(radius: 8)
                     .offset(y: h * 0.9)
 
+                // The dark inside of the shell, so an open lid reads as hinged rather than floating
+                if openAmount > 0.02 {
+                    let lidEdge = -openAmount * h * Self.lift + h * 0.533 * (1 - openAmount * 0.25)
+                    RoundedRectangle(cornerRadius: w * 0.16)
+                        .fill(LinearGradient(colors: [ShellPalette.cavityTop, ShellPalette.cavityBottom], startPoint: .top, endPoint: .bottom))
+                        .frame(width: w * 0.8, height: max(0, h * 0.6 - lidEdge + h * 0.04))
+                        .offset(y: lidEdge - h * 0.04)
+                }
+
                 // Bottom shell
                 BaseShell()
-                    .fill(LinearGradient(colors: [Color(red: 0.62, green: 0.57, blue: 0.53), Color(red: 0.36, green: 0.32, blue: 0.31)], startPoint: .top, endPoint: .bottom))
-                    .overlay(BaseRidges().stroke(.black.opacity(0.18), lineWidth: 1.5).clipShape(BaseShell()))
-                    .overlay(BaseShell().stroke(Color(red: 0.2, green: 0.17, blue: 0.17), lineWidth: 2.5))
+                    .fill(LinearGradient(colors: [ShellPalette.baseTop, ShellPalette.baseBottom], startPoint: .top, endPoint: .bottom))
+                    .overlay(ShellTexture(ribs: BaseRibs(), rings: false).clipShape(BaseShell()))
+                    .overlay(BaseShell().stroke(ShellPalette.outline, lineWidth: max(1.5, w * 0.009)))
                     .frame(width: w, height: h * 0.5)
                     .offset(y: h * 0.48)
 
                 // Inside of the shell, revealed as the lid lifts
                 Ellipse()
-                    .fill(RadialGradient(colors: [Theme.nacre, Color(red: 0.70, green: 0.52, blue: 0.64), Color(red: 0.32, green: 0.20, blue: 0.30)], center: .center, startRadius: 0, endRadius: w * 0.45))
+                    .fill(RadialGradient(colors: [Theme.nacre, Color(red: 0.78, green: 0.62, blue: 0.74), Color(red: 0.40, green: 0.26, blue: 0.38)], center: UnitPoint(x: 0.5, y: 0.4), startRadius: 0, endRadius: w * 0.45))
+                    .overlay(Ellipse().fill(AngularGradient(colors: [.pink, .mint, .cyan, .purple, .pink], center: .center)).opacity(0.18).blendMode(.overlay))
                     .frame(width: w * 0.84, height: h * 0.36 * max(0.05, openAmount))
                     .offset(y: h * 0.53 - h * 0.18 * max(0.05, openAmount))
                     .opacity(openAmount > 0.02 ? 1 : 0)
@@ -53,7 +66,7 @@ struct OysterView: View {
                 lid(w: w, h: h)
                     .frame(width: w, height: h * 0.62)
                     .scaleEffect(x: 1, y: 1 - openAmount * 0.25, anchor: .top)
-                    .offset(y: -openAmount * h * 0.42)
+                    .offset(y: -openAmount * h * Self.lift)
                     .rotationEffect(.degrees(-openAmount * 6), anchor: .bottomLeading)
             }
             .frame(width: w, height: h, alignment: .top)
@@ -81,10 +94,27 @@ struct OysterView: View {
     @ViewBuilder
     private func lid(w: CGFloat, h: CGFloat) -> some View {
         ZStack {
+            // Pearly underside, peeking out below the scallops once the lid lifts
+            Ellipse()
+                .fill(LinearGradient(colors: [Color(red: 0.55, green: 0.40, blue: 0.52), Theme.nacre], startPoint: .top, endPoint: .bottom))
+                .frame(width: w * 0.86, height: h * 0.14 * openAmount)
+                .offset(y: h * 0.62 * (0.86 - 0.5))
+                .opacity(openAmount > 0.05 ? 1 : 0)
+
             LidShell()
-                .fill(LinearGradient(colors: [Color(red: 0.84, green: 0.79, blue: 0.72), Color(red: 0.58, green: 0.53, blue: 0.49)], startPoint: .top, endPoint: .bottom))
-                .overlay(LidRidges().stroke(.black.opacity(0.16), lineWidth: 1.5).clipShape(LidShell()))
-                .overlay(LidShell().stroke(Color(red: 0.2, green: 0.17, blue: 0.17), lineWidth: 2.5))
+                .fill(LinearGradient(colors: [ShellPalette.lidTop, ShellPalette.lidMid, ShellPalette.lidEdge], startPoint: .top, endPoint: .bottom))
+                .overlay(ShellTexture(ribs: LidRibs(), rings: true).clipShape(LidShell()))
+                .overlay(
+                    // Soft sheen, like a wet shell under water
+                    Ellipse()
+                        .fill(.white.opacity(0.32))
+                        .frame(width: w * 0.34, height: h * 0.12)
+                        .rotationEffect(.degrees(-14))
+                        .offset(x: -w * 0.16, y: -h * 0.14)
+                        .blur(radius: w * 0.03)
+                        .clipShape(LidShell())
+                )
+                .overlay(LidShell().stroke(ShellPalette.outline, lineWidth: max(1.5, w * 0.009)))
 
             eyes(w: w)
                 .offset(y: h * 0.1)
@@ -114,25 +144,36 @@ struct OysterView: View {
                 ZStack(alignment: .top) {
                     Ellipse().fill(.white)
                     Circle()
-                        .fill(Color(red: 0.08, green: 0.07, blue: 0.1))
-                        .frame(width: eyeW * 0.46)
-                        .offset(x: effectiveMood == .smug ? (side == 0 ? -eyeW * 0.15 : -eyeW * 0.15) : 0, y: eyeH * 0.38)
+                        .fill(Color(red: 0.10, green: 0.08, blue: 0.12))
+                        .overlay(alignment: .topTrailing) {
+                            Circle().fill(.white.opacity(0.9)).frame(width: eyeW * 0.14).offset(x: -eyeW * 0.06, y: eyeW * 0.06)
+                        }
+                        .frame(width: eyeW * 0.5)
+                        .offset(x: effectiveMood == .smug ? -eyeW * 0.15 : 0, y: eyeH * 0.34)
                     // Eyelid
                     Rectangle()
-                        .fill(Color(red: 0.70, green: 0.65, blue: 0.60))
+                        .fill(ShellPalette.eyelid)
                         .frame(height: eyeH * lidCover)
                         .overlay(alignment: .bottom) {
-                            Rectangle().fill(Color(red: 0.2, green: 0.17, blue: 0.17)).frame(height: 2)
+                            Rectangle().fill(ShellPalette.outline).frame(height: max(1.5, w * 0.008))
                         }
                 }
                 .frame(width: eyeW, height: eyeH)
                 .clipShape(Ellipse())
-                .overlay(Ellipse().stroke(Color(red: 0.2, green: 0.17, blue: 0.17), lineWidth: 2))
+                .overlay(Ellipse().stroke(ShellPalette.outline, lineWidth: max(1.5, w * 0.008)))
+                .background(alignment: .bottom) {
+                    // Cheeks
+                    Ellipse()
+                        .fill(Color(red: 0.96, green: 0.56, blue: 0.56).opacity(effectiveMood == .alarmed ? 0.5 : 0.32))
+                        .frame(width: eyeW * 0.9, height: eyeH * 0.42)
+                        .blur(radius: eyeW * 0.08)
+                        .offset(x: side == 0 ? -eyeW * 0.3 : eyeW * 0.3, y: eyeH * 0.62)
+                }
                 .overlay(alignment: .top) {
                     if effectiveMood == .annoyed || skin == .grumpy {
                         Capsule()
-                            .fill(Color(red: 0.2, green: 0.17, blue: 0.17))
-                            .frame(width: eyeW * 1.1, height: 4)
+                            .fill(ShellPalette.outline)
+                            .frame(width: eyeW * 1.1, height: max(3, w * 0.016))
                             .rotationEffect(.degrees(side == 0 ? 14 : -14))
                             .offset(y: -eyeH * 0.35)
                     }
@@ -201,21 +242,82 @@ struct LidShell: Shape {
     }
 }
 
-struct LidRidges: Shape {
+/// Fan ribs radiating from the top of the lid, bowed outward like a real shell.
+struct LidRibs: Shape {
+    var count = 11
+
     func path(in r: CGRect) -> Path {
         var p = Path()
-        let umbo = CGPoint(x: r.midX, y: r.minY + r.height * 0.06)
-        for i in 0...12 {
-            let t = CGFloat(i) / 12
+        let umbo = CGPoint(x: r.midX, y: r.minY + r.height * 0.05)
+        for i in 1..<count {
+            let t = CGFloat(i) / CGFloat(count)
+            let end = CGPoint(x: r.minX + r.width * (0.02 + 0.96 * t), y: r.minY + r.height * 0.9)
+            let bow = (t - 0.5) * r.width * 0.22
             p.move(to: umbo)
-            p.addLine(to: CGPoint(x: r.minX + r.width * t, y: r.maxY))
-        }
-        for i in 1...3 {
-            let inset = CGFloat(i) * r.height * 0.2
-            p.addPath(LidShell().path(in: r.insetBy(dx: inset * 0.9, dy: 0).offsetBy(dx: 0, dy: inset * 0.5)))
+            p.addQuadCurve(to: end, control: CGPoint(x: (umbo.x + end.x) / 2 + bow, y: r.minY + r.height * 0.42))
         }
         return p
     }
+}
+
+/// Growth rings: shrinking copies of the lid outline, all meeting near the top.
+struct LidRings: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        for i in 1...3 {
+            let k = 1 - CGFloat(i) * 0.2
+            let rect = CGRect(x: r.midX - r.width * k / 2, y: r.minY + r.height * 0.04 * CGFloat(i), width: r.width * k, height: r.height * k)
+            p.addPath(LidShell().path(in: rect))
+        }
+        return p
+    }
+}
+
+struct BaseRibs: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let hinge = CGPoint(x: r.midX, y: r.maxY)
+        for i in 1..<11 {
+            let t = CGFloat(i) / 11
+            let end = CGPoint(x: r.minX + r.width * (0.02 + 0.96 * t), y: r.minY)
+            let bow = (t - 0.5) * r.width * 0.2
+            p.move(to: hinge)
+            p.addQuadCurve(to: end, control: CGPoint(x: (hinge.x + end.x) / 2 + bow, y: r.midY))
+        }
+        return p
+    }
+}
+
+/// Embossed ribs: a dark groove with a light edge beside it.
+private struct ShellTexture<Ribs: Shape>: View {
+    var ribs: Ribs
+    var rings: Bool
+
+    var body: some View {
+        GeometryReader { geo in
+            let lw = max(1, geo.size.width * 0.006)
+            ZStack {
+                ribs.stroke(.black.opacity(0.13), lineWidth: lw * 1.4)
+                ribs.stroke(.white.opacity(0.16), lineWidth: lw).offset(x: lw * 1.4)
+                if rings {
+                    LidRings().stroke(.black.opacity(0.08), lineWidth: lw)
+                    LidRings().stroke(.white.opacity(0.10), lineWidth: lw).offset(y: lw * 1.2)
+                }
+            }
+        }
+    }
+}
+
+enum ShellPalette {
+    static let lidTop = Color(red: 0.93, green: 0.88, blue: 0.80)
+    static let lidMid = Color(red: 0.80, green: 0.72, blue: 0.64)
+    static let lidEdge = Color(red: 0.62, green: 0.53, blue: 0.48)
+    static let baseTop = Color(red: 0.66, green: 0.57, blue: 0.52)
+    static let baseBottom = Color(red: 0.42, green: 0.35, blue: 0.34)
+    static let eyelid = Color(red: 0.75, green: 0.66, blue: 0.59)
+    static let outline = Color(red: 0.30, green: 0.23, blue: 0.23)
+    static let cavityTop = Color(red: 0.10, green: 0.06, blue: 0.11)
+    static let cavityBottom = Color(red: 0.30, green: 0.19, blue: 0.28)
 }
 
 /// Scalloped top edge, rounded bowl underneath.
@@ -240,19 +342,6 @@ struct BaseShell: Shape {
                    control1: CGPoint(x: r.minX + r.width * 0.25, y: r.maxY),
                    control2: CGPoint(x: r.minX - r.width * 0.02, y: r.minY + r.height * 0.7))
         p.closeSubpath()
-        return p
-    }
-}
-
-struct BaseRidges: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        let hinge = CGPoint(x: r.midX, y: r.maxY)
-        for i in 0...12 {
-            let t = CGFloat(i) / 12
-            p.move(to: hinge)
-            p.addLine(to: CGPoint(x: r.minX + r.width * t, y: r.minY))
-        }
         return p
     }
 }

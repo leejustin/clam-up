@@ -21,11 +21,13 @@ struct SettingsView: View {
                     } footer: {
                         Text("Now and then the oyster writes a line on the spot with Apple Intelligence. It runs on this phone. Nothing leaves it. If the line sounds off, the oyster uses one of its usual ones instead.")
                     }
+                    .listRowBackground(Self.rowBackground)
 
                     Section("Sessions") {
                         Toggle("Tell me when the pearl is ready", isOn: $notifications)
                         Toggle("Haptics", isOn: $haptics)
                     }
+                    .listRowBackground(Self.rowBackground)
 
                     Section {
                         LabeledContent("Price", value: "Paid once")
@@ -35,6 +37,7 @@ struct SettingsView: View {
                     } footer: {
                         Text("No subscription. The oyster doesn't need your money every month. It doesn't need money at all. It's an oyster.")
                     }
+                    .listRowBackground(Self.rowBackground)
 
                     #if DEBUG
                     Section("Debug") {
@@ -43,9 +46,13 @@ struct SettingsView: View {
                         Button("Reset line rotation") { ShuffleBagStore.shared.reset() }
                         Button("Erase everything", role: .destructive) { confirmReset = true }
                     }
+                    .listRowBackground(Self.rowBackground)
                     #endif
                 }
                 .scrollContentBackground(.hidden)
+                .tint(Theme.sand)
+                .frame(maxWidth: 700)
+                .frame(maxWidth: .infinity)
             }
             .navigationTitle("Settings")
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -56,6 +63,8 @@ struct SettingsView: View {
             #endif
         }
     }
+
+    private static let rowBackground = Color.white.opacity(0.07)
 
     @ViewBuilder
     private var statusRow: some View {

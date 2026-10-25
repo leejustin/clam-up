@@ -24,50 +24,45 @@ struct RevealView: View {
     }
 
     private func content(_ r: RevealResult) -> some View {
-        ZStack {
-            OceanBackground(tint: r.completed ? Theme.sea : Color(red: 0.22, green: 0.10, blue: 0.12))
-            ScrollView {
-                VStack(spacing: 22) {
-                    OysterView(
-                        openAmount: stage >= .opening ? (r.completed ? 0.9 : 0.55) : 0,
-                        mood: r.completed ? (stage >= .pearl ? .smug : .sleepy) : .annoyed,
-                        skin: OysterSkin(rawValue: skinRaw) ?? .classic,
-                        pearl: stage >= .pearl ? r.pearl : nil,
-                        breathing: false
-                    )
-                    .frame(maxWidth: 280)
-                    // Room for the lid, which lifts above the oyster's own frame.
-                    .padding(.top, 130)
-                    .animation(.spring(duration: 0.9, bounce: 0.3), value: stage)
-
-                    if stage >= .pearl { headline(r).transition(.opacity.combined(with: .move(edge: .bottom))) }
-
-                    if stage >= .line {
-                        VStack(spacing: 8) {
-                            Text(session.revealLine)
-                                .font(Theme.voice(22))
-                                .foregroundStyle(Theme.foam)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                            #if DEBUG
-                            if session.revealLineImprovised {
-                                Text("Improvised on device")
-                                    .font(Theme.ui(11, .medium))
-                                    .foregroundStyle(.orange)
-                            }
-                            #endif
+        ClamInterior(openDegrees: stage >= .opening ? 180 : 15, flush: r.completed ? 0 : 0.5) {
+            // Lid: what the oyster has to say about it.
+            VStack(spacing: 14) {
+                Spacer(minLength: 8)
+                if stage >= .pearl { headline(r).transition(.opacity.combined(with: .move(edge: .top))) }
+                if stage >= .line {
+                    VStack(spacing: 8) {
+                        Text(session.revealLine)
+                            .font(Theme.voice(22))
+                            .foregroundStyle(Theme.foam)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: 500)
+                        #if DEBUG
+                        if session.revealLineImprovised {
+                            Text("Improvised on device")
+                                .font(Theme.ui(11, .medium))
+                                .foregroundStyle(.orange)
                         }
-                        .padding(.horizontal, 12)
-                        .transition(.opacity)
+                        #endif
                     }
-
+                    .transition(.opacity)
+                }
+                Spacer(minLength: 8)
+                OysterEyes(mood: r.completed ? (stage >= .pearl ? .smug : .sleepy) : .annoyed, size: 34, lidColor: Color(red: 0.15, green: 0.18, blue: 0.22))
+                    .padding(.bottom, 12)
+            }
+            .padding(.horizontal, 24)
+        } bowl: {
+            // Bowl: the pearl, right where it grew, then whatever else washed in.
+            ScrollView {
+                VStack(spacing: 18) {
+                    pearlSpot(r)
                     VStack(spacing: 12) {
                         ForEach(Array(r.items.prefix(shownItems))) { item in
                             ItemRevealCard(found: item)
                                 .transition(.scale(scale: 0.8).combined(with: .opacity))
                         }
                     }
-
                     if stage >= .done {
                         if let streak = r.streakLine {
                             Label(streak, systemImage: "flame.fill")
@@ -82,12 +77,13 @@ struct RevealView: View {
                     }
                 }
                 .padding(.horizontal, 22)
-                .padding(.bottom, 40)
+                .padding(.bottom, 24)
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
         }
+        .animation(.easeInOut(duration: 0.9), value: stage >= .opening)
         .contentShape(Rectangle())
         .onTapGesture { if stage < .done { skipped = true } }
         .sensoryFeedback(trigger: stage) { _, new in
@@ -99,6 +95,30 @@ struct RevealView: View {
             }
         }
         .sensoryFeedback(trigger: shownItems) { _, _ in haptics ? .impact(weight: .medium) : nil }
+    }
+
+    @ViewBuilder
+    private func pearlSpot(_ r: RevealResult) -> some View {
+        let d: CGFloat = r.pearl.map { 56 + 64 * $0.size } ?? 40
+        ZStack {
+            if let pearl = r.pearl, stage >= .pearl {
+                Circle()
+                    .fill(Theme.nacre.opacity(0.35))
+                    .frame(width: d * 2.2, height: d * 2.2)
+                    .blur(radius: d * 0.5)
+                PearlView(spec: pearl, diameter: d)
+                    .transition(.scale(scale: 0.2).combined(with: .opacity))
+            } else if stage < .pearl {
+                SandGrain(size: 14, glow: 0.6)
+            } else {
+                // Where the pearl would have been.
+                Ellipse()
+                    .fill(.black.opacity(0.35))
+                    .frame(width: 54, height: 18)
+                    .blur(radius: 3)
+            }
+        }
+        .frame(height: max(d, 60) + 16)
     }
 
     private func headline(_ r: RevealResult) -> some View {
@@ -202,7 +222,9 @@ struct ItemRevealCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            ItemArtView(item: found.item, size: 64)
+            ItemArtView(item: found.item, size: 52)
+                .frame(width: 70, height: 70)
+                .background(SpecimenDish(rarity: found.item.rarity))
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Text(found.item.name)
@@ -246,7 +268,7 @@ struct ShareCard: View {
         VStack(spacing: 18) {
             OysterView(openAmount: result.completed ? 0.9 : 0.55, mood: result.completed ? .smug : .annoyed, skin: skin, pearl: result.pearl, breathing: false)
                 .frame(width: 220)
-                .padding(.top, 90)
+                .padding(.top, 70)
             Text(result.pearl?.title ?? "No pearl")
                 .font(.system(size: 26, weight: .bold, design: .serif))
                 .foregroundStyle(Theme.foam)

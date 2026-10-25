@@ -48,6 +48,7 @@ struct ItemArtView: View {
 
     var body: some View {
         art
+            .shadow(color: .black.opacity(silhouette ? 0 : 0.35), radius: size * 0.05, y: size * 0.04)
             .frame(width: size, height: size)
             .modifier(SilhouetteModifier(on: silhouette))
             .accessibilityLabel(silhouette ? "Undiscovered" : item.name)
@@ -90,7 +91,8 @@ private struct SilhouetteModifier: ViewModifier {
     var on: Bool
     func body(content: Content) -> some View {
         if on {
-            content.saturation(0).brightness(-1).opacity(0.45)
+            // A faint ghost of the shape, like something half-buried in sand
+            content.saturation(0).brightness(1).opacity(0.13)
         } else {
             content
         }
@@ -253,5 +255,19 @@ private struct SmileArc: Shape {
             }
         }
         .padding()
+    }
+}
+
+/// A shallow sandy dish that every found thing sits in, so emoji and drawn art look like one collection.
+struct SpecimenDish: View {
+    var rarity: Rarity
+    var lit = true
+
+    var body: some View {
+        Circle()
+            .fill(RadialGradient(
+                colors: lit ? [Theme.rarityColor(rarity).opacity(0.28), Theme.rarityColor(rarity).opacity(0.05)] : [Color.white.opacity(0.05), Color.white.opacity(0.02)],
+                center: UnitPoint(x: 0.5, y: 0.4), startRadius: 0, endRadius: 50))
+            .overlay(Circle().strokeBorder(lit ? Theme.rarityColor(rarity).opacity(0.35) : Color.white.opacity(0.06), lineWidth: 1))
     }
 }

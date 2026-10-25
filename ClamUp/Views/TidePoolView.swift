@@ -37,6 +37,12 @@ struct TidePoolView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+            #if DEBUG
+            .onAppear {
+                let args = ProcessInfo.processInfo.arguments
+                if let i = args.firstIndex(of: "-poolSection"), i + 1 < args.count, let s = Section(rawValue: args[i + 1]) { section = s }
+            }
+            #endif
             .navigationTitle("Tide pool")
             .toolbarBackground(.hidden, for: .navigationBar)
             .sheet(item: $selected) { item in
@@ -199,17 +205,26 @@ struct ItemCell: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            ItemArtView(item: item, size: 56, silhouette: count == 0)
+            ItemArtView(item: item, size: 50, silhouette: count == 0)
+                .frame(width: 68, height: 68)
+                .background(SpecimenDish(rarity: item.rarity, lit: count > 0))
             Text(count > 0 ? item.name : "???")
                 .font(Theme.ui(12, .medium))
                 .foregroundStyle(count > 0 ? Theme.foam : Theme.mist.opacity(0.6))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            Text(count > 1 ? "×\(count)" : " ")
-                .font(Theme.ui(11, .semibold))
-                .foregroundStyle(Theme.mist)
         }
-        .padding(.vertical, 10)
+        .overlay(alignment: .topTrailing) {
+            if count > 1 {
+                Text("×\(count)")
+                    .font(Theme.ui(11, .bold))
+                    .foregroundStyle(Theme.abyss)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Theme.rarityColor(item.rarity), in: .capsule)
+                    .offset(x: 4, y: -4)
+            }
+        }
+        .padding(.vertical, 12)
         .padding(.horizontal, 6)
         .frame(maxWidth: .infinity)
         .card(radius: 16)

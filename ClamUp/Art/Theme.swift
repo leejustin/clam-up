@@ -28,49 +28,12 @@ enum Theme {
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font { .system(size: size, weight: weight, design: .rounded) }
 }
 
+/// The inside of the shell, for screens that aren't split at the hinge.
 struct OceanBackground: View {
-    var tint: Color = Theme.sea
-
     var body: some View {
-        ZStack {
-            LinearGradient(colors: [Theme.abyss, Theme.deep, tint], startPoint: .top, endPoint: .bottom)
-            Bubbles()
-                .opacity(0.5)
-        }
-        .ignoresSafeArea()
-    }
-}
-
-/// Slow rising bubbles. Purely decorative, drawn in one Canvas.
-struct Bubbles: View {
-    private struct Bubble {
-        let x: Double, speed: Double, size: Double, wobble: Double, offset: Double
-    }
-
-    private let bubbles: [Bubble] = (0..<14).map { i in
-        var g = SeededGenerator(seed: UInt64(i + 1) * 7919)
-        return Bubble(
-            x: .random(in: 0...1, using: &g), speed: .random(in: 0.015...0.04, using: &g),
-            size: .random(in: 3...9, using: &g), wobble: .random(in: 4...14, using: &g), offset: .random(in: 0...1, using: &g)
-        )
-    }
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
-            Canvas { context, size in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                for b in bubbles {
-                    let progress = (b.offset + t * b.speed).truncatingRemainder(dividingBy: 1)
-                    let y = size.height * (1.05 - progress * 1.1)
-                    let x = size.width * b.x + sin(t * 0.8 + b.offset * 10) * b.wobble
-                    let rect = CGRect(x: x, y: y, width: b.size, height: b.size)
-                    context.stroke(Path(ellipseIn: rect), with: .color(.white.opacity(0.35 * (1 - progress))), lineWidth: 1)
-                }
-            }
-        }
-        .allowsHitTesting(false)
+        NacreSurface(half: .bowl, sheen: 0.3)
+            .overlay(Color.black.opacity(0.3))
+            .ignoresSafeArea()
     }
 }
 
@@ -91,8 +54,14 @@ struct CardBackground: ViewModifier {
     var radius: CGFloat = 20
     func body(content: Content) -> some View {
         content
-            .background(Theme.card, in: .rect(cornerRadius: radius))
-            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.cardStroke))
+            .background(
+                LinearGradient(colors: [Color.white.opacity(0.09), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom),
+                in: .rect(cornerRadius: radius, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.16), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom))
+            )
     }
 }
 
@@ -108,7 +77,11 @@ struct PrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(Theme.abyss)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
-            .background(color, in: .capsule)
+            .background(
+                LinearGradient(colors: [color.mix(with: .white, by: 0.15), color], startPoint: .top, endPoint: .bottom),
+                in: .capsule
+            )
+            .shadow(color: color.opacity(0.25), radius: 14, y: 6)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.snappy(duration: 0.15), value: configuration.isPressed)
     }
@@ -121,6 +94,39 @@ struct QuietButtonStyle: ButtonStyle {
             .foregroundStyle(Theme.mist)
             .padding(.vertical, 12)
             .padding(.horizontal, 18)
-            .background(Color.white.opacity(configuration.isPressed ? 0.12 : 0.06), in: .capsule)
+            .background(Color.white.opacity(configuration.isPressed ? 0.14 : 0.07), in: .capsule)
+            .overlay(Capsule().strokeBorder(Theme.cardStroke))
     }
+}
+
+/// A speech bubble with a small tail pointing down at whoever is talking.
+struct SpeechBubble: Shape {
+    var radius: CGFloat = 22
+    var tail: CGFloat = 12
+
+    func path(in r: CGRect) -> Path {
+        let body = CGRect(x: r.minX, y: r.minY, width: r.width, height: r.height - tail)
+        var p = Path(roundedRect: body, cornerRadius: radius, style: .continuous)
+        var t = Path()
+        t.move(to: CGPoint(x: r.midX - tail * 1.1, y: body.maxY - 1))
+        t.addQuadCurve(to: CGPoint(x: r.midX + tail * 0.2, y: r.maxY), control: CGPoint(x: r.midX - tail * 0.1, y: body.maxY + tail * 0.4))
+        t.addQuadCurve(to: CGPoint(x: r.midX + tail * 0.9, y: body.maxY - 1), control: CGPoint(x: r.midX + tail * 0.4, y: body.maxY + tail * 0.4))
+        t.closeSubpath()
+        p.addPath(t)
+        return p
+    }
+}
+
+struct Pill: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(Theme.ui(14, .semibold))
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .background(.ultraThinMaterial.opacity(0.6), in: .capsule)
+            .overlay(Capsule().strokeBorder(Theme.cardStroke))
+    }
+}
+
+extension View {
+    func pill() -> some View { modifier(Pill()) }
 }
