@@ -218,82 +218,6 @@ struct ShellExterior: View {
     }
 }
 
-/// The oyster's eyes, without the rest of the cartoon. Used where the phone itself is the shell.
-struct OysterEyes: View {
-    var mood: OysterMood = .content
-    var size: CGFloat = 36
-    /// Color of the eyelids, matched to whatever the eyes sit on.
-    var lidColor = Color(red: 0.24, green: 0.22, blue: 0.26)
-
-    @State private var blink = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var cover: CGFloat {
-        if blink { return 1 }
-        switch mood {
-        case .sleepy: return 0.58
-        case .content: return 0.38
-        case .annoyed, .smug: return 0.5
-        case .alarmed: return 0
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: size * 0.9) {
-            ForEach(0..<2, id: \.self) { side in
-                eye(side: side)
-            }
-        }
-        .task {
-            guard !reduceMotion else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(Double.random(in: 2.5...6)))
-                withAnimation(.easeIn(duration: 0.07)) { blink = true }
-                try? await Task.sleep(for: .seconds(0.13))
-                withAnimation(.easeOut(duration: 0.1)) { blink = false }
-            }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private func eye(side: Int) -> some View {
-        let w = size, h = size * 0.82
-        let outline = Color(red: 0.10, green: 0.08, blue: 0.10)
-        return ZStack(alignment: .top) {
-            Ellipse().fill(Color(red: 0.97, green: 0.96, blue: 0.93))
-            Circle()
-                .fill(Color(red: 0.10, green: 0.08, blue: 0.12))
-                .overlay(alignment: .topTrailing) {
-                    Circle().fill(.white.opacity(0.9)).frame(width: w * 0.14).offset(x: -w * 0.06, y: w * 0.06)
-                }
-                .frame(width: w * 0.5)
-                .offset(x: mood == .smug ? -w * 0.15 : 0, y: h * 0.34)
-            Rectangle()
-                .fill(lidColor)
-                .frame(height: h * cover)
-                .overlay(alignment: .bottom) { Rectangle().fill(outline).frame(height: 1.5) }
-        }
-        .frame(width: w, height: h)
-        .clipShape(Ellipse())
-        .overlay(Ellipse().stroke(outline, lineWidth: 1.5))
-        .overlay(alignment: .top) {
-            if mood == .annoyed {
-                Capsule().fill(outline)
-                    .frame(width: w * 1.1, height: max(2.5, w * 0.1))
-                    .rotationEffect(.degrees(side == 0 ? 14 : -14))
-                    .offset(y: -h * 0.35)
-            }
-        }
-        .background(alignment: .bottom) {
-            Ellipse()
-                .fill(Color(red: 0.96, green: 0.56, blue: 0.62).opacity(mood == .alarmed ? 0.45 : 0.28))
-                .frame(width: w * 0.9, height: h * 0.42)
-                .blur(radius: w * 0.08)
-                .offset(x: side == 0 ? -w * 0.3 : w * 0.3, y: h * 0.62)
-        }
-    }
-}
-
 /// The grain of sand a pearl starts from. Glints now and then.
 struct SandGrain: View {
     var size: CGFloat = 14
@@ -317,7 +241,7 @@ struct SandGrain: View {
 
 #Preview("Clam") {
     ClamInterior {
-        VStack { Spacer(); OysterEyes() }
+        Text("Hello").foregroundStyle(.white)
     } bowl: {
         VStack { SandGrain(glow: 0.6); Spacer() }
     }

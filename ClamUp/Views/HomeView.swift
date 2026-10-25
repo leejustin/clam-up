@@ -46,8 +46,6 @@ struct HomeView: View {
                     .padding(.top, 10)
             }
             Spacer(minLength: 8)
-            OysterEyes(mood: session.phase == .idle ? .content : .sleepy, size: 34, lidColor: Color(red: 0.15, green: 0.18, blue: 0.22))
-                .padding(.bottom, 12)
         }
         .padding(.horizontal, 24)
         .padding(.top, 4)

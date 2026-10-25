@@ -48,8 +48,6 @@ struct RevealView: View {
                     .transition(.opacity)
                 }
                 Spacer(minLength: 8)
-                OysterEyes(mood: r.completed ? (stage >= .pearl ? .smug : .sleepy) : .annoyed, size: 34, lidColor: Color(red: 0.15, green: 0.18, blue: 0.22))
-                    .padding(.bottom, 12)
             }
             .padding(.horizontal, 24)
         } bowl: {

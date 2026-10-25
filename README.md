@@ -41,7 +41,7 @@ xcodebuild -project ClamUp.xcodeproj -scheme ClamUp -destination 'platform=iOS S
 | On-device AI lines | `ClamUp/Engine/OysterImproviser.swift` |
 | The AI-ism filter | `ClamUp/Engine/LineFilter.swift` |
 
-**The phone is the shell.** The Duo's inner screen folds across its middle, so the app draws the inside of a clam there: the lid's mother of pearl on the top half and the bowl on the bottom half, with the real hinge between them. The oyster's eyes sit just above the crease, and the pearl grows just below it. Light spills in from the lip as the hinge opens (`ClamInterior` in `ClamUp/Art/Clam.swift`). Shut, the cover display shows the ribbed outside of the shell. Phones without a hinge get the same split. In debug builds, `-hingeAngle 60` fakes a part-open shell.
+**The phone is the shell.** The Duo's inner screen folds across its middle, so the app draws the inside of a clam there: the lid's mother of pearl on the top half and the bowl on the bottom half, with the real hinge between them. The pearl grows just below the crease. Light spills in from the lip as the hinge opens (`ClamInterior` in `ClamUp/Art/Clam.swift`). Shut, the cover display shows the ribbed outside of the shell. Phones without a hinge get the same split. In debug builds, `-hingeAngle 60` fakes a part-open shell.
 
 **Session rules.** Closing the shell starts the clock. Opening early starts a 6 second countdown, and closing again resumes the session. If the countdown runs out, the session ends with a "regret" item. Losing the hinge signal never counts as opening.
 

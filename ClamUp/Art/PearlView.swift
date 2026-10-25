@@ -17,25 +17,46 @@ struct PearlView: View {
 
     var body: some View {
         let p = palette
+        let d = diameter
         ZStack {
+            // Body: lit from the upper left, rolling off to the shadow color at the edge.
             Circle()
-                .fill(RadialGradient(colors: [p.highlight, p.base, p.shadow], center: UnitPoint(x: 0.36, y: 0.3),
-                                     startRadius: 0, endRadius: diameter * 0.78))
-            Circle()
-                .fill(AngularGradient(colors: [.pink, .mint, .purple, .cyan, .pink], center: .center))
-                .opacity(spec.color == .black ? 0.32 : 0.16)
-                .blendMode(.overlay)
+                .fill(RadialGradient(colors: [p.highlight, p.base, p.base, p.shadow], center: UnitPoint(x: 0.4, y: 0.36),
+                                     startRadius: 0, endRadius: d * 0.66))
+            // Orient: the faint pink and green overtones real pearls have, kept soft.
+            ZStack {
+                Ellipse().fill(Color(red: 1, green: 0.62, blue: 0.75)).frame(width: d * 0.7, height: d * 0.5).offset(x: d * 0.18, y: d * 0.2)
+                Ellipse().fill(Color(red: 0.55, green: 0.9, blue: 0.8)).frame(width: d * 0.45, height: d * 0.6).offset(x: -d * 0.28, y: d * 0.05)
+            }
+            .blur(radius: d * 0.12)
+            .opacity(spec.color == .black ? 0.45 : 0.22)
+            .blendMode(.softLight)
+            // Light bouncing up from the shell underneath.
             Ellipse()
-                .fill(.white.opacity(0.85))
-                .frame(width: diameter * 0.26, height: diameter * 0.17)
-                .rotationEffect(.degrees(-30))
-                .offset(x: -diameter * 0.17, y: -diameter * 0.2)
-                .blur(radius: diameter * 0.02)
-            Circle().stroke(p.shadow.opacity(0.35), lineWidth: max(0.5, diameter * 0.015))
+                .fill(.white.opacity(0.28))
+                .frame(width: d * 0.5, height: d * 0.16)
+                .offset(y: d * 0.36)
+                .blur(radius: d * 0.05)
+            // Edge falloff.
+            Circle()
+                .fill(RadialGradient(colors: [.clear, .clear, p.shadow.opacity(0.45)], center: .center, startRadius: 0, endRadius: d * 0.5))
+            // Highlight: a soft glow with a small sharp core.
+            Ellipse()
+                .fill(.white.opacity(0.4))
+                .frame(width: d * 0.38, height: d * 0.28)
+                .offset(x: -d * 0.13, y: -d * 0.16)
+                .blur(radius: d * 0.06)
+            Ellipse()
+                .fill(.white.opacity(0.95))
+                .frame(width: d * 0.14, height: d * 0.09)
+                .rotationEffect(.degrees(-28))
+                .offset(x: -d * 0.16, y: -d * 0.19)
+                .blur(radius: d * 0.008)
         }
-        .frame(width: diameter, height: diameter)
+        .clipShape(Circle())
+        .frame(width: d, height: d)
         .hueRotation(.degrees(spec.hueJitter * 10))
-        .shadow(color: .black.opacity(0.35), radius: diameter * 0.08, y: diameter * 0.06)
+        .shadow(color: .black.opacity(0.4), radius: d * 0.1, y: d * 0.07)
         .accessibilityLabel(spec.title)
     }
 }
@@ -48,6 +69,7 @@ struct ItemArtView: View {
 
     var body: some View {
         art
+            .modifier(CharmModifier(on: !silhouette))
             .shadow(color: .black.opacity(silhouette ? 0 : 0.35), radius: size * 0.05, y: size * 0.04)
             .frame(width: size, height: size)
             .modifier(SilhouetteModifier(on: silhouette))
@@ -83,6 +105,21 @@ struct ItemArtView: View {
             }
         case .discoPearl:
             DiscoPearlArt(size: size * 0.74)
+        }
+    }
+}
+
+/// Tones every item down to a pale, pearly charm, so emoji and drawn art read as one collection.
+private struct CharmModifier: ViewModifier {
+    var on: Bool
+    func body(content: Content) -> some View {
+        if on {
+            content
+                .saturation(0)
+                .contrast(1.15)
+                .colorMultiply(Color(red: 0.98, green: 0.92, blue: 0.84))
+        } else {
+            content
         }
     }
 }

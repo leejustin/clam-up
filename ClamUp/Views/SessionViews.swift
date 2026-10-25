@@ -11,7 +11,6 @@ struct CoverSessionView: View {
                 let done = session.isDone(at: context.date)
                 VStack(spacing: 24) {
                     Spacer(minLength: 0)
-                    OysterEyes(mood: done ? .content : .sleepy, size: 46, lidColor: Color(red: 0.32, green: 0.28, blue: 0.27))
                     SessionClock(large: true)
                     Text(done ? session.readyLine : session.coverLine)
                         .font(Theme.voice(19))
@@ -54,8 +53,6 @@ struct PryingView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 480)
                     Spacer(minLength: 8)
-                    OysterEyes(mood: .alarmed, size: 36, lidColor: Color(red: 0.30, green: 0.12, blue: 0.15))
-                        .padding(.bottom, 12)
                 }
                 .padding(.horizontal, 28)
             } bowl: {
