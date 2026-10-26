@@ -75,6 +75,7 @@ enum CollectionSet: String, CaseIterable, Codable {
     }
 }
 
+/// A shell finish. The raw values are stored, so they keep their old outfit names.
 enum OysterSkin: String, CaseIterable, Codable, Identifiable {
     case classic, junk, cozy, bath, pirate, disco, grumpy
 
@@ -82,13 +83,13 @@ enum OysterSkin: String, CaseIterable, Codable, Identifiable {
 
     var name: String {
         switch self {
-        case .classic: "Classic"
-        case .junk: "Bottle cap hat"
-        case .cozy: "Sock beanie"
-        case .bath: "Duck companion"
-        case .pirate: "Eye patch"
-        case .disco: "Disco shades"
-        case .grumpy: "Permanent frown"
+        case .classic: "Black-lip"
+        case .junk: "Gold-lip"
+        case .cozy: "Lilac"
+        case .bath: "Sea glass"
+        case .pirate: "Abalone"
+        case .disco: "Silver-lip"
+        case .grumpy: "Bruised"
         }
     }
 

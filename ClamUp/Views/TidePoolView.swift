@@ -163,7 +163,7 @@ struct TidePoolView: View {
 
     private func wardrobe(_ unlocked: Set<OysterSkin>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Wardrobe")
+            Text("Shells")
                 .font(Theme.ui(18, .semibold))
                 .foregroundStyle(Theme.foam)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -175,7 +175,7 @@ struct TidePoolView: View {
                             if isOn { skinRaw = skin.rawValue }
                         } label: {
                             VStack(spacing: 6) {
-                                OysterView(skin: skin, breathing: false)
+                                ShellSwatch(skin: skin)
                                     .frame(width: 72)
                                     .opacity(isOn ? 1 : 0.25)
                                     .overlay { if !isOn { Image(systemName: "lock.fill").foregroundStyle(Theme.mist) } }
@@ -189,7 +189,7 @@ struct TidePoolView: View {
                             .background(wearing ? Theme.sand.opacity(0.12) : .clear, in: .rect(cornerRadius: 14))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(isOn ? (wearing ? "\(skin.name), wearing" : skin.name) : "\(skin.name), locked")
+                        .accessibilityLabel(isOn ? (wearing ? "\(skin.name), in use" : skin.name) : "\(skin.name), locked")
                     }
                 }
             }

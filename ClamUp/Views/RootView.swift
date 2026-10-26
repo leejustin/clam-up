@@ -4,6 +4,7 @@ struct RootView: View {
     @Environment(SessionController.self) private var session
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(Prefs.haptics) private var haptics = true
+    @AppStorage(Prefs.skin) private var skinRaw = OysterSkin.classic.rawValue
     @State private var tab = 0
 
     var body: some View {
@@ -45,6 +46,7 @@ struct RootView: View {
             if phase == .armed || phase == .growing { tab = 0 }
         }
         .animation(.easeInOut(duration: 0.35), value: session.phase)
+        .environment(\.shellFinish, (OysterSkin(rawValue: skinRaw) ?? .classic).finish)
         .sensoryFeedback(trigger: session.phase) { _, new in
             guard haptics else { return nil }
             switch new {

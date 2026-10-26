@@ -5,16 +5,7 @@ import SwiftUI
 // display is the outside of the shell. On phones without a hinge the same split still reads as an open clam.
 
 enum Nacre {
-    /// Dark "black-lip" mother of pearl, so text stays readable.
-    static let base = Color(red: 0.06, green: 0.08, blue: 0.11)
-    static let lip = Color(red: 0.02, green: 0.02, blue: 0.04)
-    static let sheens: [Color] = [
-        Color(red: 0.22, green: 0.58, blue: 0.62),
-        Color(red: 0.46, green: 0.36, blue: 0.74),
-        Color(red: 0.78, green: 0.46, blue: 0.62),
-        Color(red: 0.56, green: 0.68, blue: 0.46),
-        Color(red: 0.26, green: 0.42, blue: 0.80),
-    ]
+    /// Reddens the inside when the shell is pried open early.
     static let flush = Color(red: 0.70, green: 0.12, blue: 0.16)
 }
 
@@ -28,6 +19,8 @@ struct NacreSurface: View {
     /// 0...1. Reddens the inside, for when the shell is pried open early.
     var flush: Double = 0
 
+    @Environment(\.shellFinish) private var finish
+
     var body: some View {
         Canvas { context, size in
             let hinge = CGPoint(x: size.width / 2, y: half == .lid ? size.height : 0)
@@ -38,7 +31,7 @@ struct NacreSurface: View {
 
             // Lighter nacre near the hinge, darkening to the black lip at the outer edge.
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .radialGradient(
-                Gradient(colors: [Color(red: 0.13, green: 0.17, blue: 0.21), Nacre.base, Nacre.lip]),
+                Gradient(colors: [finish.glow, finish.base, finish.lip]),
                 center: hinge, startRadius: 0, endRadius: reach))
 
             // Patches of iridescence drifting over the surface, like light on mother of pearl.
@@ -51,13 +44,13 @@ struct NacreSurface: View {
                     let c = CGPoint(x: size.width * (0.5 + cos(angle) * dist * 0.55),
                                     y: half == .lid ? size.height * (1 - abs(sin(angle)) * dist) : size.height * abs(sin(angle)) * dist)
                     let r = min(size.width, size.height) * .random(in: 0.25...0.45, using: &g)
-                    let color = Nacre.sheens[(i + Int(floor(sheen))) % Nacre.sheens.count]
+                    let color = finish.sheens[(i + Int(floor(sheen))) % finish.sheens.count]
                     layer.fill(Path(ellipseIn: CGRect(x: c.x - r * 1.3, y: c.y - r, width: r * 2.6, height: r * 2)), with: .color(color.opacity(0.3)))
                 }
                 // A soft band of sheen following the hinge.
                 for i in 0..<4 {
                     let r = reach * (0.18 + 0.2 * CGFloat(i))
-                    let color = Nacre.sheens[(i * 2 + Int(floor(sheen * 2))) % Nacre.sheens.count]
+                    let color = finish.sheens[(i * 2 + Int(floor(sheen * 2))) % finish.sheens.count]
                     layer.stroke(Path(ellipseIn: ellipse(r)), with: .color(color.opacity(0.18)), lineWidth: reach * 0.08)
                 }
             }
@@ -76,7 +69,7 @@ struct NacreSurface: View {
         }
         .overlay {
             // The dark lip along the outer edges, the ones away from the hinge.
-            LipShadow(half: half)
+            LipShadow(half: half, color: finish.lip)
         }
         .drawingGroup()
     }
@@ -85,12 +78,13 @@ struct NacreSurface: View {
 /// A soft dark band along the three outer edges of a half, leaving the hinge edge clear.
 private struct LipShadow: View {
     var half: NacreSurface.Half
+    var color: Color
 
     var body: some View {
         GeometryReader { geo in
             let band = min(geo.size.width, geo.size.height) * 0.12
             Rectangle()
-                .stroke(Nacre.lip.opacity(0.85), lineWidth: band)
+                .stroke(color.opacity(0.85), lineWidth: band)
                 .blur(radius: band * 0.6)
                 // Push the hinge edge out of view so only the lip edges darken.
                 .frame(width: geo.size.width, height: geo.size.height + band * 3)
@@ -138,44 +132,42 @@ struct OysterOutline: Shape {
 }
 
 /// One open valve: the rough outer lip, then nacre inside it.
-private struct ShellValve: View {
+struct ShellValve: View {
     var half: NacreSurface.Half
     var sheen: Double
     var flush: Double
 
+    @Environment(\.shellFinish) private var finish
+
     var body: some View {
         GeometryReader { geo in
-            let rim = min(28, max(12, min(geo.size.width, geo.size.height) * 0.05))
+            let rim = min(28, max(4, min(geo.size.width, geo.size.height) * 0.055))
             let hingeAtTop = half == .bowl
             let seed: UInt64 = half == .lid ? 7 : 19
             let outer = OysterOutline(hingeAtTop: hingeAtTop, seed: seed)
             let inner = OysterOutline(hingeAtTop: hingeAtTop, seed: seed, inset: rim, frill: 0.35)
             ZStack {
                 outer
-                    .fill(Shell.dark)
-                    .shadow(color: .black.opacity(0.6), radius: 14, y: 6)
+                    .fill(finish.dark)
+                    .shadow(color: .black.opacity(0.6), radius: rim * 0.6, y: rim * 0.25)
                 // Flaky growth plates stepping in from the lip, each a little paler and casting a little shadow.
                 ForEach(0..<4) { k in
                     let shade = Double(k) / 3
                     OysterOutline(hingeAtTop: hingeAtTop, seed: seed &+ UInt64(k), inset: rim * CGFloat(k) / 4.5, frill: 1 - 0.2 * Double(k))
-                        .fill(LinearGradient(colors: [Shell.mid.mix(with: Shell.light, by: shade), Shell.dark.mix(with: Shell.mid, by: shade)],
+                        .fill(LinearGradient(colors: [finish.mid.mix(with: finish.light, by: shade), finish.dark.mix(with: finish.mid, by: shade)],
                                              startPoint: hingeAtTop ? .bottom : .top, endPoint: hingeAtTop ? .top : .bottom))
                         .shadow(color: .black.opacity(0.45), radius: 2, y: hingeAtTop ? -1 : 1)
                 }
                 NacreSurface(half: half, sheen: sheen, flush: flush)
                     .clipShape(inner)
-                inner.stroke(Nacre.lip.opacity(0.7), lineWidth: 2)
-                inner.stroke(Color.white.opacity(0.12), lineWidth: 1).padding(2.5)
+                inner.stroke(finish.lip.opacity(0.7), lineWidth: min(2, rim * 0.15))
+                inner.stroke(Color.white.opacity(0.12), lineWidth: 1).padding(min(2.5, rim * 0.2))
             }
         }
     }
 }
 
-/// The outside of an oyster: chalky grey-brown with a little purple.
 enum Shell {
-    static let light = Color(red: 0.55, green: 0.50, blue: 0.47)
-    static let mid = Color(red: 0.36, green: 0.32, blue: 0.33)
-    static let dark = Color(red: 0.17, green: 0.15, blue: 0.17)
     /// What the oyster is lying on.
     static let seabed = Color(red: 0.03, green: 0.07, blue: 0.10)
 }
@@ -267,6 +259,8 @@ private struct Dimming: View {
 
 /// The outside of a shut oyster, lying on the seabed. Fills the cover display.
 struct ShellExterior: View {
+    @Environment(\.shellFinish) private var finish
+
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
@@ -274,7 +268,7 @@ struct ShellExterior: View {
                 RadialGradient(colors: [Color(red: 0.06, green: 0.13, blue: 0.17), Shell.seabed], center: .center, startRadius: 0, endRadius: max(size.width, size.height) * 0.7)
                 ZStack {
                     OysterOutline(hingeAtTop: false, seed: 41, frill: 1.4)
-                        .fill(Shell.dark)
+                        .fill(finish.dark)
                         .shadow(color: .black.opacity(0.7), radius: 20, y: 10)
                     ShellPlates()
                         .clipShape(OysterOutline(hingeAtTop: false, seed: 41, frill: 1.4))
@@ -290,6 +284,8 @@ struct ShellExterior: View {
 /// Growth plates on the outside of the shell: ragged layers stacked from the lip in toward the hinge,
 /// each one paler and lifted a little off the one below.
 private struct ShellPlates: View {
+    @Environment(\.shellFinish) private var finish
+
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
@@ -298,7 +294,7 @@ private struct ShellPlates: View {
                     let d = min(size.width, size.height) * CGFloat(k) * 0.065
                     let shade = Double(k) / 7
                     OysterOutline(hingeAtTop: false, seed: 41 &+ UInt64(k * 3), frill: 1.3 - 0.08 * Double(k))
-                        .fill(LinearGradient(colors: [Shell.mid.mix(with: Shell.light, by: shade), Shell.dark.mix(with: Shell.mid, by: shade)],
+                        .fill(LinearGradient(colors: [finish.mid.mix(with: finish.light, by: shade), finish.dark.mix(with: finish.mid, by: shade)],
                                              startPoint: .top, endPoint: .bottom))
                         .shadow(color: .black.opacity(0.4), radius: 3, y: 2)
                         // Plates crowd toward the hinge at the bottom.

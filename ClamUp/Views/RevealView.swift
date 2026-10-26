@@ -147,17 +147,17 @@ struct RevealView: View {
 
     private func unlockBanner(_ skin: OysterSkin) -> some View {
         HStack(spacing: 14) {
-            OysterView(skin: skin, breathing: false).frame(width: 64)
+            ShellSwatch(skin: skin).frame(width: 64)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Set complete")
                     .font(Theme.ui(13, .semibold))
                     .foregroundStyle(Theme.sand)
-                Text("New look: \(skin.name)")
+                Text("New shell: \(skin.name)")
                     .font(Theme.ui(17, .semibold))
                     .foregroundStyle(Theme.foam)
             }
             Spacer()
-            Button("Wear it") { skinRaw = skin.rawValue }
+            Button("Use it") { skinRaw = skin.rawValue }
                 .font(Theme.ui(15, .semibold))
                 .foregroundStyle(Theme.abyss)
                 .padding(.horizontal, 14).padding(.vertical, 8)
@@ -274,9 +274,8 @@ struct ShareCard: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            OysterView(openAmount: result.completed ? 0.9 : 0.55, mood: result.completed ? .smug : .annoyed, skin: skin, pearl: result.pearl, breathing: false)
-                .frame(width: 220)
-                .padding(.top, 70)
+            OpenOyster(pearl: result.pearl, width: 200)
+                .padding(.top, 24)
             Text(result.pearl?.title ?? "No pearl")
                 .font(.system(size: 26, weight: .bold, design: .serif))
                 .foregroundStyle(Theme.foam)
@@ -296,6 +295,7 @@ struct ShareCard: View {
         }
         .padding(32)
         .frame(width: 360)
-        .background(LinearGradient(colors: [Theme.abyss, Theme.sea], startPoint: .top, endPoint: .bottom))
+        .background(RadialGradient(colors: [Color(red: 0.06, green: 0.13, blue: 0.17), Shell.seabed], center: .top, startRadius: 0, endRadius: 600))
+        .environment(\.shellFinish, skin.finish)
     }
 }

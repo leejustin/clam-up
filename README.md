@@ -35,13 +35,13 @@ xcodebuild -project ClamUp.xcodeproj -scheme ClamUp -destination 'platform=iOS S
 | Session state machine | `ClamUp/Engine/SessionController.swift` |
 | Hinge reading | `ClamUp/Engine/Hinge.swift` |
 | Pearls, loot table, streak luck | `ClamUp/Engine/RewardEngine.swift`, `Pearl.swift`, `Streak.swift` |
-| Items, sets, unlockable looks | `ClamUp/Content/Items.swift` |
+| Items, sets, unlockable shell finishes | `ClamUp/Content/Items.swift`, `ClamUp/Art/ShellFinish.swift` |
 | Every handwritten line | `ClamUp/Content/LineLibrary.swift` |
 | Line rotation | `ClamUp/Engine/ShuffleBag.swift`, `LineEngine.swift` |
 | On-device AI lines | `ClamUp/Engine/OysterImproviser.swift` |
 | The AI-ism filter | `ClamUp/Engine/LineFilter.swift` |
 
-**The phone is the shell.** The Duo's inner screen folds across its middle, so the app draws the inside of a clam there: the lid's mother of pearl on the top half and the bowl on the bottom half, with the real hinge between them. The pearl grows just below the crease. Light spills in from the lip as the hinge opens (`ClamInterior` in `ClamUp/Art/Clam.swift`). Shut, the cover display shows the ribbed outside of the shell. Phones without a hinge get the same split. In debug builds, `-hingeAngle 60` fakes a part-open shell.
+**The phone is the shell.** The Duo's inner screen folds across its middle, so the app draws an open oyster there: the lid on the top half and the bowl on the bottom half, each a rough-lipped valve lined with mother of pearl, joined at the real hinge. The pearl grows just below the crease. Light spills in from the lip as the hinge opens (`ClamInterior` in `ClamUp/Art/Clam.swift`). Shut, the cover display shows the layered outside of the shell. Phones without a hinge get the same split. The app is portrait only, so the drawn hinge always sits on the fold. Finishing a set unlocks a shell finish (gold-lip, abalone and so on) that recolors the whole shell. The app icon is rendered from `AppIconArt` in `ShellFinish.swift`. In debug builds, `-hingeAngle 60` fakes a part-open shell.
 
 **Session rules.** Closing the shell starts the clock. Opening early starts a 6 second countdown, and closing again resumes the session. If the countdown runs out, the session ends with a "regret" item. Losing the hinge signal never counts as opening.
 
@@ -56,4 +56,4 @@ xcodebuild -project ClamUp.xcodeproj -scheme ClamUp -destination 'platform=iOS S
 - **Background behavior is unconfirmed.** Apple hasn't documented what happens to a running app when the Duo closes. In the simulator, the app moves to the cover display and keeps getting hinge updates. If iOS suspends it on a real device, the session still works: it is saved with its start time and a notification fires when the pearl is ready. One gap remains: if someone opens the phone and uses other apps without returning, the app can't tell when they opened it.
 - **Not tested on a physical iPhone Duo.**
 - **No Live Activity yet.** A Live Activity on the cover display would keep the timer visible without the app running.
-- **Pricing is set in App Store Connect.** A paid-up-front app needs no StoreKit code. Paid oyster looks would need in-app purchases.
+- **Pricing is set in App Store Connect.** A paid-up-front app needs no StoreKit code. Paid shell finishes would need in-app purchases.
