@@ -22,7 +22,7 @@ struct HomeView: View {
 
     // MARK: Lid
 
-    /// The underside of the lid: the oyster talks from here, and its eyes sit just above the hinge.
+    /// The underside of the lid: the oyster talks from here.
     private var lid: some View {
         VStack(spacing: 0) {
             header
@@ -137,8 +137,9 @@ struct HomeView: View {
     private var idleControls: some View {
         VStack(spacing: 14) {
             DurationPicker(seconds: $duration)
-                .contentMargins(.horizontal, 24, for: .scrollContent)
-                .padding(.horizontal, -24)
+                .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.06),
+                                             .init(color: .black, location: 0.94), .init(color: .clear, location: 1)],
+                                     startPoint: .leading, endPoint: .trailing))
             Button("Get ready") {
                 taskFocused = false
                 session.arm(task: task, seconds: duration)

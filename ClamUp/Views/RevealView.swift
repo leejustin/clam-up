@@ -80,6 +80,16 @@ struct RevealView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            .scrollEdgeEffectHidden(true, for: .all)
+            // Let the pearl's glow spill up toward the hinge instead of stopping at a hard edge.
+            .scrollClipDisabled()
+            .mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 50)
+                    Color.black
+                }
+                .padding(.top, -50)
+            }
         }
         .animation(.easeInOut(duration: 0.9), value: stage >= .opening)
         .contentShape(Rectangle())
